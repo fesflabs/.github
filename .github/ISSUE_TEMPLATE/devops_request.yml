@@ -1,0 +1,40 @@
+name: "⚙️ DevOps / Infra"
+description: Solicite melhorias relacionadas a infraestrutura, CI/CD, automação ou monitoramento.
+title: "[DEVOPS]: "
+labels: ["devops", "infrastructure"]
+body:
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto
+      description: Explique a situação atual ou necessidade.
+      placeholder: "Ex: O ambiente de staging ainda não possui monitoramento configurado"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mudanca-proposta
+    attributes:
+      label: Mudança Proposta
+      description: Descreva o que deve ser feito ou configurado.
+      placeholder: "Ex: Criar dashboard no Grafana com métricas de CPU e memória"
+    validations:
+      required: true
+
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto Esperado
+      description: Explique o benefício para o time/projeto.
+      placeholder: "Ex: Time será alertado automaticamente em caso de sobrecarga"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist de Validação
+      options:
+        - label: Documentação foi atualizada
+        - label: Pipeline/ambiente testado com sucesso
+        - label: Aprovação do time de DevOps

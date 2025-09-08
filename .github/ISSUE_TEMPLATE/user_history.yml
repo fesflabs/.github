@@ -1,0 +1,120 @@
+name: "📝 História de Usuário"
+description: "Descreva uma funcionalidade do ponto de vista do usuário final."
+title: "[STORY]: "
+labels: ["story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Uma boa história de usuário segue o formato:
+        **Como um** [tipo de usuário], **eu quero** [realizar uma ação] **para que** [eu obtenha um benefício].
+
+  - type: input
+    id: user-role
+    attributes:
+      label: Como um (Persona)
+      placeholder: "Ex: Administrador do sistema, Cliente não registrado"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-goal
+    attributes:
+      label: Eu quero (Ação)
+      placeholder: "Ex: Visualizar o histórico de todos os pedidos"
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-benefit
+    attributes:
+      label: Para que (Benefício)
+      placeholder: "Ex: Possa identificar padrões de compra e tomar decisões de negócio"
+    validations:
+      required: true
+
+  - type: textarea
+    id: business-rules
+    attributes:
+      label: Regras de Negócio
+      description: Liste as regras que impactam essa história de usuário.
+      placeholder: |
+        - Regra 1: Apenas usuários autenticados podem acessar.
+        - Regra 2: O limite máximo de registros exibidos é 100.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Critérios de Aceite
+      description: "Liste os requisitos que devem ser atendidos para que a história seja considerada 'Pronta'. Use o formato 'Dado que... Quando... Então...'"
+      placeholder: |
+        - [ ] Critério 1: Dado que estou na tela X, quando clico no botão Y, então vejo Z.
+        - [ ] Critério 2: A página deve carregar em menos de 2 segundos.
+    validations:
+      required: true
+
+  - type: textarea
+    id: fields
+    attributes:
+      label: Campos da História
+      description: Liste os campos de formulário ou atributos relevantes para essa história.
+      placeholder: |
+        - Nome (obrigatório)
+        - E-mail (validação de formato)
+        - Data de nascimento (dd/mm/aaaa)
+    validations:
+      required: false
+
+  - type: textarea
+    id: actions
+    attributes:
+      label: Botões / Ações
+      description: Liste e descreva os botões, links ou ações que fazem parte dessa história.
+      placeholder: |
+        - Botão "Salvar": persiste os dados e exibe mensagem de sucesso.
+        - Link "Cancelar": retorna para a tela inicial.
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Observações
+      description: Informações adicionais que não se enquadram nos campos acima.
+      placeholder: "Ex: Este fluxo será integrado futuramente ao módulo de relatórios."
+    validations:
+      required: false
+
+  - type: textarea
+    id: alignment-dates
+    attributes:
+      label: Datas de Alinhamento com o Cliente
+      description: Registre as datas e resumos das reuniões que impactaram essa história.
+      placeholder: |
+        - 05/09/2025: Cliente solicitou adicionar campo de telefone.
+        - 15/09/2025: Cliente aprovou layout final.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: story-points
+    attributes:
+      label: Estimativa (Story Points)
+      description: "Estime a complexidade usando a sequência de Fibonacci (0, 1, 2, 3, 8, 13, 21)."
+      options:
+        - "0 Baixa (Até 5 min)"
+        - "1 Baixa (6 a 30 minutos)"
+        - "2 Baixa (31 min a 1 hora)"
+        - "3 Média (1 hora e 1 min até 3 horas e 30m)"
+        - "8 Média (3 horas e 31 min até 6 horas)"
+        - "13 Alta (2 a 5 dias)"
+        - "21 Alta (6 a 10 dias)"
+
+  - type: input
+    id: epic-link
+    attributes:
+      label: Link para o Épico (Milestone)
+      description: "Se esta história pertence a um Épico (Milestone), cole o link aqui."
+      placeholder: "Ex: https://github.com/org/repo/milestone/1"

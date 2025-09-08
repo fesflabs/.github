@@ -1,0 +1,75 @@
+name: CI Genérico (Backend/Frontend)
+
+# Gatilho: Roda sempre que ele for chamado por outro workflow
+on:
+  workflow_call:
+    inputs:
+      project_type:
+        description: "Tipo de projeto: 'backend' ou 'frontend'"
+        required: true
+        type: string
+      runner:
+        description: "Runner onde o job vai rodar"
+        required: false
+        type: string
+        default: self-hosted
+
+jobs:
+  build-test:
+    name: Build/Test CI
+    runs-on: ${{ inputs.runner }}
+    # O job vai rodar no no servidor auto-hospedado, determinado pelo workflow do repositório em que for chamado.
+
+    steps:
+      # 1. Checkout (Baixar o código mais recente do repositório para o ambiente do runner)
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      # 2. Backend: criar .env fictício para o build
+      # O build precisa que o arquivo .env exista, mesmo que com valores fictícios,
+      # para que o Docker Compose funcione sem erros.
+      - name: Criar arquivo .env fictício (backend)
+        if: ${{ inputs.project_type == 'backend' }}
+        run: echo "DUMMY_VAR=DUMMY_VALUE" > .env
+
+      # 3. Backend: build Docker
+      # Este é o teste principal. Se este passo passar, significa que nosso Dockerfile
+      # está correto e todas as dependências podem ser instaladas.
+      - name: Build Docker (backend)
+        if: ${{ inputs.project_type == 'backend' }}
+        run: docker compose build
+
+      # 4. Frontend: configurar Node.js
+      - name: Configuração Node.js (frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 5. Frontend: instalar pnpm
+      - name: Instalação do pnpm (frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      # 6. Frontend: instalar dependências
+      - name: Instalar dependências (frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        run: pnpm install --frozen-lockfile
+
+      # 7. Frontend: criar .env para build
+      - name: Criar .env (frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        run: cp .env.example .env
+
+      # 8. Frontend: build
+      - name: Build Frontend (Next.js)
+        if: ${{ inputs.project_type == 'frontend' }}
+        run: pnpm run build
+
+      # Cleanup (Apenas backend)
+      - name: Limpar imagens Docker não utilizadas
+        if: ${{ always() && inputs.project_type == 'backend' }}
+        run: docker image prune -f

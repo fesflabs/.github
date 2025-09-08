@@ -1,0 +1,67 @@
+name: "📝 Tarefa"
+description: Crie uma tarefa para o projeto que não se encaixa em bug, solicitação de feature ou refatoração.
+title: "[TASK]: "
+labels: ["task"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição da Tarefa
+      description: Explique claramente o que precisa ser feito.
+      placeholder: "Ex: Configurar variável de ambiente no servidor de staging"
+    validations:
+      required: true
+
+  - type: textarea
+    id: results
+    attributes:
+      label: Resultado Esperado
+      description: Qual deve ser o resultado final desta tarefa?
+      placeholder: "Ex: Pipeline de deploy atualiza automaticamente a env var"
+    validations:
+      required: true
+
+  - type: textarea
+    id: business_rules
+    attributes:
+      label: Regras de Negócios
+      description: Descreva quaisquer regras de negócios ou requisitos específicos relacionados a esta tarefa.
+      placeholder: "Ex: - A variável de ambiente deve ser criptografada"
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Critérios de Aceitação
+      description: Liste os critérios que devem ser atendidos para considerar esta tarefa concluída.
+      placeholder: |
+        - Critério 1: Dado que ..., quando ..., então ...
+        - Critério 2: Dado que ..., quando ..., então ...
+        - Ex: 
+          - Dado que estou na página de configurações,
+          - Quando eu adicionar uma nova variável de ambiente,
+          - Então ela deve ser salva e visível na lista.
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependências
+      description: Liste outras issues, PRs ou tarefas que precisam estar concluídas antes.
+      placeholder: "Ex: Depende da issue #123"
+    validations:
+      required: false
+
+  - type: textarea
+    id: subtasks
+    attributes:
+      label: Subtarefas
+      description: Liste os passos necessários para concluir esta tarefa. Use `- [ ]` para criar checkboxes.
+      placeholder: |
+        - [ ] Ação 1
+        - [ ] Ação 2
+        - [ ] Ação 3
+    validations:
+      required: false

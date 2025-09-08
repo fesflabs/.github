@@ -1,0 +1,39 @@
+name: "💡 Solicitação de Nova Funcionalidade"
+description: Sugira uma ideia ou funcionalidade para o projeto.
+title: "[FEAT]: "
+labels: ["feature", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por dedicar seu tempo para sugerir uma nova funcionalidade!
+
+  - type: textarea
+    id: problema-a-resolver
+    attributes:
+      label: Qual problema esta funcionalidade resolve?
+      description: "Descreva o problema ou a necessidade que você está enfrentando. Ex: 'Atualmente, é difícil para os usuários encontrarem seus pedidos antigos, o que gera muitos chamados de suporte.'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucao-proposta
+    attributes:
+      label: Qual é a sua sugestão de solução?
+      description: Descreva como a funcionalidade deveria funcionar do ponto de vista do usuário.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Você considerou alguma solução alternativa?
+      description: Descreva outras formas que você pensou para resolver o mesmo problema.
+
+  - type: checkboxes
+    id: confirmacao
+    attributes:
+      label: Checklist de Confirmação
+      options:
+        - label: Eu pesquisei por issues existentes e não encontrei uma solicitação similar.
+          required: true

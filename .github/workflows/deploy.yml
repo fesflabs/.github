@@ -1,0 +1,115 @@
+# # Nome do workflow que aparecerá na aba "Actions" do GitHub
+# name: CI/CD - Deploy para Desenvolvimento (Após PR).
+
+# # Gatilho: este workflow roda sempre que houver um push na branch 'main'
+# on:
+#   pull_request:
+#     types: [ closed ]
+#     branches: [ "develop" ]
+
+# jobs:
+#   build-and-deploy-develop:
+
+#     if: github.event.pull_request.merged == true
+#     # O job vai rodar no nosso agente auto-hospedado, que está no servidor
+#     # Se lembre de alterar a linha debaixo:
+#     # runs-on: [self-hosted, tag_do_seu_runner ]
+#     runs-on: [self-hosted]
+
+#     steps:
+#       # 1. Baixar o código mais recente do repositório para o ambiente do runner
+#       - name: Checkout do código
+#         uses: actions/checkout@v4
+      
+#       - name: Criar arquivo .env a partir do secret em bloco
+#         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+#       # 2. Construir a imagem e reiniciar os serviços com Docker Compose
+#       - name: Build e Deploy com Docker Compose
+#         run: |
+#           docker compose build python-back
+#           docker compose up -d --remove-orphans
+
+#       - name: Limpar Imagens Docker não utilizadas
+#         if: always()
+
+#         run: docker image prune -f
+
+name: Deploy Genérico Multi-Serviços (Backend/Frontend)
+
+on:
+  workflow_call:
+    inputs:
+      project_type:
+        description: "Tipo de projeto: 'backend' ou 'frontend'"
+        required: true
+        type: string
+      runner:
+        description: "Runner onde o job vai rodar"
+        required: false
+        type: string
+        default: self-hosted
+      service_name:
+        description: "Nome do serviço Docker Compose a ser construído/deployado"
+        required: false
+        type: string
+        default: ""
+      all_services:
+        description: "Se true, builda e sobe todos os serviços"
+        required: false
+        type: boolean
+        default: false
+      docker_target:
+        description: "Alvo específico para build (opcional)"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      # 1. Checkout
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      # 2. Criar .env a partir do secret
+      - name: Criar .env a partir do secret
+        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      # 3. Build
+      - name: Build Docker
+        run: |
+          if [ "${{ inputs.all_services }}" = "true" ]; then
+            echo "Build de todos os serviços"
+            docker compose build
+          elif [ "${{ inputs.docker_target }}" != "" ]; then
+            echo "Build do serviço específico: ${{ inputs.docker_target }}"
+            docker compose build ${{ inputs.docker_target }}
+          elif [ "${{ inputs.service_name }}" != "" ]; then
+            echo "Build do serviço padrão: ${{ inputs.service_name }}"
+            docker compose build ${{ inputs.service_name }}
+          else
+            echo "Nenhum serviço definido. Build padrão: todos"
+            docker compose build
+          fi
+
+      # 4. Deploy
+      - name: Deploy Docker
+        run: |
+          if [ "${{ inputs.all_services }}" = "true" ]; then
+            echo "Subindo todos os serviços"
+            docker compose up -d --remove-orphans
+          elif [ "${{ inputs.service_name }}" != "" ]; then
+            echo "Subindo serviço: ${{ inputs.service_name }}"
+            docker compose up -d --remove-orphans ${{ inputs.service_name }}
+          else
+            echo "Nenhum serviço definido. Subindo todos"
+            docker compose up -d --remove-orphans
+          fi
+
+      # 5. Limpeza
+      - name: Limpar imagens Docker não utilizadas
+        if: always()
+        run: docker image prune -f

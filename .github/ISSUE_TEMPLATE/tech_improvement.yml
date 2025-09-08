@@ -1,0 +1,38 @@
+name: "🔧 Melhoria Técnica ou Refatoração"
+description: Sugira uma melhoria no código, arquitetura, performance ou débito técnico.
+title: "[REFACTOR]: "
+labels: ["technical-debt", "refactor"]
+body:
+  - type: textarea
+    id: situacao-atual
+    attributes:
+      label: Qual é a situação atual do código/arquitetura?
+      description: "Descreva a parte do sistema que precisa de melhoria e por que. Ex: 'A função de cálculo de frete está muito lenta' ou 'O módulo de autenticação está muito acoplado'."
+    validations:
+      required: true
+
+  - type: textarea
+    id: mudanca-proposta
+    attributes:
+      label: Qual é a mudança proposta?
+      description: Descreva a melhoria técnica que você sugere.
+    validations:
+      required: true
+
+  - type: textarea
+    id: beneficios
+    attributes:
+      label: Quais são os benefícios esperados?
+      description: "Descreva o impacto positivo da mudança. Ex: 'Reduzir o tempo de resposta da API em 50%' ou 'Facilitar a manutenção futura e a entrada de novos desenvolvedores'."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tipo-de-melhoria
+    attributes:
+      label: Tipo de Melhoria
+      options:
+        - label: Refatoração de código
+        - label: Otimização de Performance
+        - label: Atualização de dependência
+        - label: Melhoria de arquitetura
