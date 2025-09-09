@@ -9,7 +9,7 @@ O objetivo é padronizar nossas práticas e facilitar a integração de novos me
 
 ## 🚀 Recursos Essenciais
 
-### Boilerplates Oficiais
+### Boilerplates Oficiais (Apenas para membros da organização)
 
 Para garantir consistência e acelerar o início de novos projetos, utilize sempre os boilerplates oficiais:
 
