@@ -1,5 +1,5 @@
 name: "📝 Subtarefas"
-description: Crie uma tarefa para o projeto que não se encaixa em bug, solicitação de feature ou refatoração.
+description: Crie uma subtarefa (USAR EM TAREFAS JÁ EXISTENTES).
 title: "[SUBTASK]: "
 labels: ["task"]
 body:
