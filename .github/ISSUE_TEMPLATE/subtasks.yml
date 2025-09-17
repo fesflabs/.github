@@ -1,0 +1,16 @@
+name: "📝 Subtarefas"
+description: Crie uma tarefa para o projeto que não se encaixa em bug, solicitação de feature ou refatoração.
+title: "[SUBTASK]: "
+labels: ["task"]
+body:
+  - type: textarea
+    id: subtasks
+    attributes:
+      label: Subtarefas
+      description: Liste os passos necessários para concluir esta tarefa. Use `- [ ]` para criar checkboxes.
+      placeholder: |
+        - [ ] Ação 1
+        - [ ] Ação 2
+        - [ ] Ação 3
+    validations:
+      required: false
