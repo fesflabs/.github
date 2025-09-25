@@ -12,7 +12,7 @@ on:
         description: "Runner onde o job vai rodar"
         required: false
         type: string
-        default: self-hosted
+        default: '["self-hosted"]'
 
 jobs:
   build-test:
