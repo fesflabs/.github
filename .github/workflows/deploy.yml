@@ -1,40 +1,3 @@
-# # Nome do workflow que aparecerá na aba "Actions" do GitHub
-# name: CI/CD - Deploy para Desenvolvimento (Após PR).
-
-# # Gatilho: este workflow roda sempre que houver um push na branch 'main'
-# on:
-#   pull_request:
-#     types: [ closed ]
-#     branches: [ "develop" ]
-
-# jobs:
-#   build-and-deploy-develop:
-
-#     if: github.event.pull_request.merged == true
-#     # O job vai rodar no nosso agente auto-hospedado, que está no servidor
-#     # Se lembre de alterar a linha debaixo:
-#     # runs-on: [self-hosted, tag_do_seu_runner ]
-#     runs-on: [self-hosted]
-
-#     steps:
-#       # 1. Baixar o código mais recente do repositório para o ambiente do runner
-#       - name: Checkout do código
-#         uses: actions/checkout@v4
-      
-#       - name: Criar arquivo .env a partir do secret em bloco
-#         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-
-#       # 2. Construir a imagem e reiniciar os serviços com Docker Compose
-#       - name: Build e Deploy com Docker Compose
-#         run: |
-#           docker compose build python-back
-#           docker compose up -d --remove-orphans
-
-#       - name: Limpar Imagens Docker não utilizadas
-#         if: always()
-
-#         run: docker image prune -f
-
 name: Deploy Genérico Multi-Serviços (Backend/Frontend)
 
 on:
@@ -48,7 +11,7 @@ on:
         description: "Runner onde o job vai rodar"
         required: false
         type: string
-        default: self-hosted
+        default: '["self-hosted"]'
       service_name:
         description: "Nome do serviço Docker Compose a ser construído/deployado"
         required: false
@@ -67,7 +30,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
       # 1. Checkout
@@ -76,6 +39,7 @@ jobs:
 
       # 2. Criar .env a partir do secret
       - name: Criar .env a partir do secret
+        if: secrets.ENV_FILE_CONTENT != ''
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
       # 3. Build
