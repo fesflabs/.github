@@ -44,8 +44,12 @@ jobs:
 
       # 2. Criar .env a partir do secret
       - name: Criar .env a partir do secret
-        if: secrets.ENV_FILE != ''
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        run: |
+          if [ -n "${{ secrets.ENV_FILE }}" ]; then
+            echo "${{ secrets.ENV_FILE }}" > .env
+          else
+            echo "⚠️ Secret ENV_FILE não definido, pulando criação do .env"
+          fi
 
       # 3. Build
       - name: Build Docker
