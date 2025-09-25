@@ -17,7 +17,7 @@ on:
 jobs:
   build-test:
     name: Build/Test CI
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ fromJSON(inputs.runner) }}
     # O job vai rodar no no servidor auto-hospedado, determinado pelo workflow do repositório em que for chamado.
 
     steps:
