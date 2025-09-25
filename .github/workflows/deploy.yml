@@ -28,6 +28,11 @@ on:
         type: string
         default: ""
 
+    secrets:
+      ENV_FILE:
+        description: 'O conteúdo do arquivo .env para o deploy.'
+        required: true
+
 jobs:
   deploy:
     runs-on: ${{ fromJSON(inputs.runner) }}
@@ -39,8 +44,8 @@ jobs:
 
       # 2. Criar .env a partir do secret
       - name: Criar .env a partir do secret
-        if: secrets.ENV_FILE_CONTENT != ''
-        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+        if: secrets.ENV_FILE != ''
+        run: echo "${{ secrets.ENV_FILE }}" > .env
 
       # 3. Build
       - name: Build Docker
