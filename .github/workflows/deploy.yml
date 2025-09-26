@@ -20,7 +20,7 @@ on:
       all_services:
         description: "Se true, builda e sobe todos os serviços"
         required: false
-        type: boolean
+        type: string
         default: false
       docker_target:
         description: "Alvo específico para build (opcional)"
