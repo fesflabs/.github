@@ -1,6 +1,5 @@
-name: CI Genérico (Backend/Frontend)
+name: CI Genérico com Cache Local (Backend/Frontend)
 
-# Gatilho: Roda sempre que ele for chamado por outro workflow
 on:
   workflow_call:
     inputs:
@@ -13,40 +12,27 @@ on:
         required: false
         type: string
         default: '["self-hosted"]'
+      # Nome do serviço principal da aplicação no docker-compose.yml
+      service_name:
+        description: "Nome do serviço principal a ser construído"
+        required: true
+        type: string
 
 jobs:
   build-test:
-    name: Build/Test CI
+    name: Build/Test com Cache
     runs-on: ${{ fromJSON(inputs.runner) }}
-    # O job vai rodar no no servidor auto-hospedado, determinado pelo workflow do repositório em que for chamado.
-
     steps:
-      # 1. Checkout (Baixar o código mais recente do repositório para o ambiente do runner)
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # 2. Backend: criar .env fictício para o build
-      # O build precisa que o arquivo .env exista, mesmo que com valores fictícios,
-      # para que o Docker Compose funcione sem erros.
-      - name: Criar arquivo .env fictício (backend)
-        if: ${{ inputs.project_type == 'backend' }}
-        run: echo "DUMMY_VAR=DUMMY_VALUE" > .env
-
-      # 3. Backend: build Docker
-      # Este é o teste principal. Se este passo passar, significa que nosso Dockerfile
-      # está correto e todas as dependências podem ser instaladas.
-      - name: Build Docker (backend)
-        if: ${{ inputs.project_type == 'backend' }}
-        run: docker compose build
-
-      # 4. Frontend: configurar Node.js
+      # --- ETAPAS FRONTEND ---
       - name: Configuração Node.js (frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      # 5. Frontend: instalar pnpm
       - name: Instalação do pnpm (frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: pnpm/action-setup@v4
@@ -54,22 +40,39 @@ jobs:
           version: 10
           run_install: false
 
-      # 6. Frontend: instalar dependências
+      - name: Obter o diretório de cache do pnpm
+        if: ${{ inputs.project_type == 'frontend' }}
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Configurar cache de dependências do pnpm (automático)
+        if: ${{ inputs.project_type == 'frontend' }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-v1-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-v1-
+
       - name: Instalar dependências (frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         run: pnpm install --frozen-lockfile
 
-      # 7. Frontend: criar .env para build
-      - name: Criar .env (frontend)
-        if: ${{ inputs.project_type == 'frontend' }}
-        run: cp .env.example .env
+      # --- ETAPAS COMUNS (BUILD) ---
+      - name: Criar .env para build
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            echo "DUMMY_VAR=DUMMY_VALUE" > .env
+          fi
 
-      # 8. Frontend: build
-      - name: Build Frontend (Next.js)
-        if: ${{ inputs.project_type == 'frontend' }}
-        run: pnpm run build
+      - name: Build Docker da Aplicação usando cache local
+        run: docker compose build --pull ${{ inputs.service_name }}
 
-      # Cleanup (Apenas backend)
+      # --- CLEANUP ---
       - name: Limpar imagens Docker não utilizadas
-        if: ${{ always() && inputs.project_type == 'backend' }}
+        if: always()
         run: docker image prune -f
