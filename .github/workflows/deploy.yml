@@ -3,31 +3,15 @@ name: Deploy Genérico Multi-Serviços (Backend/Frontend)
 on:
   workflow_call:
     inputs:
-      project_type:
-        description: "Tipo de projeto: 'backend' ou 'frontend'"
-        required: true
-        type: string
       runner:
         description: "Runner onde o job vai rodar"
         required: false
         type: string
         default: '["self-hosted"]'
       service_name:
-        description: "Nome do serviço Docker Compose a ser construído/deployado"
-        required: false
+        description: "Nome do serviço a ser deployado (ex: python-back)"
+        required: true
         type: string
-        default: ""
-      all_services:
-        description: "Se true, builda e sobe todos os serviços"
-        required: false
-        type: string
-        default: false
-      docker_target:
-        description: "Alvo específico para build (opcional)"
-        required: false
-        type: string
-        default: ""
-
     secrets:
       ENV_FILE:
         description: 'O conteúdo do arquivo .env para o deploy.'
@@ -35,54 +19,21 @@ on:
 
 jobs:
   deploy:
+    name: Deploy Rápido de Serviço
     runs-on: ${{ fromJSON(inputs.runner) }}
-
     steps:
-      # 1. Checkout
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # 2. Criar .env a partir do secret
       - name: Criar .env a partir do secret
-        run: |
-          if [ -n "${{ secrets.ENV_FILE }}" ]; then
-            echo "${{ secrets.ENV_FILE }}" > .env
-          else
-            echo "⚠️ Secret ENV_FILE não definido, pulando criação do .env"
-          fi
+        run: echo "${{ secrets.ENV_FILE }}" > .env
 
-      # 3. Build
-      - name: Build Docker
+      - name: Deploy Cirúrgico do Serviço
         run: |
-          if [ "${{ inputs.all_services }}" = "true" ]; then
-            echo "Build de todos os serviços"
-            docker compose build
-          elif [ "${{ inputs.docker_target }}" != "" ]; then
-            echo "Build do serviço específico: ${{ inputs.docker_target }}"
-            docker compose build ${{ inputs.docker_target }}
-          elif [ "${{ inputs.service_name }}" != "" ]; then
-            echo "Build do serviço padrão: ${{ inputs.service_name }}"
-            docker compose build ${{ inputs.service_name }}
-          else
-            echo "Nenhum serviço definido. Build padrão: todos"
-            docker compose build
-          fi
+          echo "Iniciando deploy para o serviço: ${{ inputs.service_name }}"
+          # A flag --no-deps é uma segurança extra para não reiniciar dependências.
+          docker compose up -d --no-deps ${{ inputs.service_name }}
 
-      # 4. Deploy
-      - name: Deploy Docker
-        run: |
-          if [ "${{ inputs.all_services }}" = "true" ]; then
-            echo "Subindo todos os serviços"
-            docker compose up -d --remove-orphans
-          elif [ "${{ inputs.service_name }}" != "" ]; then
-            echo "Subindo serviço: ${{ inputs.service_name }}"
-            docker compose up -d --remove-orphans ${{ inputs.service_name }}
-          else
-            echo "Nenhum serviço definido. Subindo todos"
-            docker compose up -d --remove-orphans
-          fi
-
-      # 5. Limpeza
       - name: Limpar imagens Docker não utilizadas
         if: always()
         run: docker image prune -f
