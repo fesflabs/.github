@@ -12,7 +12,6 @@ on:
         required: false
         type: string
         default: '["self-hosted"]'
-      # Nome do serviço principal da aplicação no docker-compose.yml
       service_name:
         description: "Nome do serviço principal a ser construído"
         required: true
@@ -26,7 +25,7 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # --- ETAPAS FRONTEND ---
+      # --- ETAPAS NO RUNNER (PARA LINT/TEST) ---
       - name: Configuração Node.js (frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: actions/setup-node@v4
@@ -47,7 +46,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
-      - name: Configurar cache de dependências do pnpm (automático)
+      - name: Configurar cache de dependências do Runner (para lint/test)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: actions/cache@v4
         with:
@@ -56,11 +55,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-v1-
 
-      - name: Instalar dependências (frontend)
+      - name: Instalar dependências no Runner (para lint/test)
         if: ${{ inputs.project_type == 'frontend' }}
         run: pnpm install --frozen-lockfile
 
-      # --- ETAPAS COMUNS (BUILD) ---
+      # =================================================================
+      # ▼▼▼ ADICIONE SEUS PASSOS DE LINT E TEST AQUI NO FUTURO ▼▼▼
+      # Eles usarão o node_modules cacheado pela 'actions/cache'
+      # - name: Executar Lint
+      #   if: ${{ inputs.project_type == 'frontend' }}
+      #   run: pnpm run lint
+      #
+      # - name: Executar Testes
+      #   if: ${{ inputs.project_type == 'frontend' }}
+      #   run: pnpm run test
+      # =================================================================
+
+      # --- ETAPA DE BUILD DOCKER ---
       - name: Criar .env para build
         run: |
           if [ -f .env.example ]; then
@@ -69,10 +80,12 @@ jobs:
             echo "DUMMY_VAR=DUMMY_VALUE" > .env
           fi
 
-      - name: Build Docker da Aplicação usando cache local
+      - name: Build Docker (com Cache de Pnpm via BuildKit)
+        # Esta variável de ambiente garante que o Docker use seu motor de build moderno.
+        env:
+          DOCKER_BUILDKIT: 1
         run: docker compose build --pull ${{ inputs.service_name }}
 
-      # --- CLEANUP ---
       - name: Limpar imagens Docker não utilizadas
         if: always()
         run: docker image prune -f
