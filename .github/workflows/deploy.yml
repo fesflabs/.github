@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "Iniciando deploy para o serviço: ${{ inputs.service_name }}"
           # A flag --no-deps é uma segurança extra para não reiniciar dependências.
-          docker compose up -d --no-deps ${{ inputs.service_name }}
+          docker compose up -d --force-recreate --no-deps ${{ inputs.service_name }}
 
       - name: Limpar imagens Docker não utilizadas
         if: always()
