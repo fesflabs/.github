@@ -17,8 +17,8 @@ on:
         required: true
         type: string
     secrets:
-      NEXT_PUBLIC_API_URL:
-        description: "URL pública da API para o build do frontend"
+      ENV_FILE_CONTENT:
+        description: 'Conteúdo completo do .env com todas as variáveis.'
         required: false
 
 jobs:
@@ -65,11 +65,7 @@ jobs:
       
       - name: Criar .env para build com a URL da API
         run: |
-          if [ -f .env.example ]; then
-            cp .env.example .env
-          fi
-          # Adiciona/sobrescreve a variável da API com o valor do secret
-          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+          echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_API_URL=" > .env
 
       # ▼▼▼ PASSO DE DEBUG TEMPORÁRIO ▼▼▼
       - name: 🕵️‍♂️ [DEBUG] VERIFICAR CONTEÚDO DO .ENV DE BUILD
