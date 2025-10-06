@@ -71,6 +71,14 @@ jobs:
           # Adiciona/sobrescreve a variável da API com o valor do secret
           echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
 
+      # ▼▼▼ PASSO DE DEBUG TEMPORÁRIO ▼▼▼
+      - name: 🕵️‍♂️ [DEBUG] VERIFICAR CONTEÚDO DO .ENV DE BUILD
+        run: |
+          echo "=================================================="
+          echo "Conteúdo do arquivo .env que será usado no build:"
+          cat .env
+          echo "=================================================="
+
       - name: Build Docker (com Cache de Pnpm via BuildKit)
         env:
           DOCKER_BUILDKIT: 1
