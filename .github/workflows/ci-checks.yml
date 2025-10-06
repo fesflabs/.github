@@ -62,18 +62,16 @@ jobs:
       - name: Instalar dependências no Runner (para lint/test)
         if: ${{ inputs.project_type == 'frontend' }}
         run: pnpm install --frozen-lockfile
-      
-      - name: Criar .env para build com a URL da API
-        run: |
-          echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_API_URL=" > .env
 
-      # ▼▼▼ PASSO DE DEBUG TEMPORÁRIO ▼▼▼
-      - name: 🕵️‍♂️ [DEBUG] VERIFICAR CONTEÚDO DO .ENV DE BUILD
+      - name: Criar .env para build (Condicional)
         run: |
-          echo "=================================================="
-          echo "Conteúdo do arquivo .env que será usado no build:"
-          cat .env
-          echo "=================================================="
+          if [ "${{ inputs.project_type }}" == "frontend" ]; then
+            echo "Criando .env específico para o build do Frontend..."
+            echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_API_URL=" > .env
+          else
+            echo "Criando .env genérico para o build do Backend..."
+            echo "DUMMY_VAR=DUMMY_VALUE" > .env
+          fi
 
       - name: Build Docker (com Cache de Pnpm via BuildKit)
         env:
