@@ -16,6 +16,10 @@ on:
         description: "Nome do serviço principal a ser construído"
         required: true
         type: string
+    secrets:
+      NEXT_PUBLIC_API_URL:
+        description: "URL pública da API para o build do frontend"
+        required: false
 
 jobs:
   build-test:
@@ -58,30 +62,16 @@ jobs:
       - name: Instalar dependências no Runner (para lint/test)
         if: ${{ inputs.project_type == 'frontend' }}
         run: pnpm install --frozen-lockfile
-
-      # =================================================================
-      # ▼▼▼ ADICIONE SEUS PASSOS DE LINT E TEST AQUI NO FUTURO ▼▼▼
-      # Eles usarão o node_modules cacheado pela 'actions/cache'
-      # - name: Executar Lint
-      #   if: ${{ inputs.project_type == 'frontend' }}
-      #   run: pnpm run lint
-      #
-      # - name: Executar Testes
-      #   if: ${{ inputs.project_type == 'frontend' }}
-      #   run: pnpm run test
-      # =================================================================
-
-      # --- ETAPA DE BUILD DOCKER ---
-      - name: Criar .env para build
+      
+      - name: Criar .env para build com a URL da API
         run: |
           if [ -f .env.example ]; then
             cp .env.example .env
-          else
-            echo "DUMMY_VAR=DUMMY_VALUE" > .env
           fi
+          # Adiciona/sobrescreve a variável da API com o valor do secret
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
 
       - name: Build Docker (com Cache de Pnpm via BuildKit)
-        # Esta variável de ambiente garante que o Docker use seu motor de build moderno.
         env:
           DOCKER_BUILDKIT: 1
         run: docker compose build --pull ${{ inputs.service_name }}
