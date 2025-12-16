@@ -1,0 +1,82 @@
+name: Reusable - Build e Push Otimizado
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      push_image:
+        required: true
+        type: boolean
+      extra_tags:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+
+env:
+  REGISTRY_URL: ${{ vars.ORG_REGISTRY_URL }}
+  IMAGE_NAME: ${{ vars.REPO_IMAGE_NAME }}
+  CACHE_IMAGE: ${{ vars.REPO_CACHE_IMAGE_NAME }}
+  DOCKERFILE_PATH: Dockerfile
+  BUILD_CONTEXT: .
+
+jobs:
+  build:
+    name: Build com cache remoto
+    runs-on: [self-hosted, linux, ci, ephemeral]
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:latest
+          buildkitd-config-inline: |
+            [registry."${{ env.REGISTRY_URL }}"]
+              http = true
+              insecure = true
+
+      - name: Login no registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Montar lista de tags
+        id: tags
+        run: |
+          TAGS="${REGISTRY_URL}/${IMAGE_NAME}:${GITHUB_SHA}"
+          if [ "${{ inputs.environment }}" = "homolog" ]; then
+            TAGS="${TAGS},${REGISTRY_URL}/${IMAGE_NAME}:homolog"
+          elif [ "${{ inputs.environment }}" = "prod" ]; then
+            TAGS="${TAGS},${REGISTRY_URL}/${IMAGE_NAME}:prod"
+          fi
+
+          if [ -n "${{ inputs.extra_tags }}" ]; then
+            TAGS="${TAGS},${{ inputs.extra_tags }}"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build (com ou sem push)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.BUILD_CONTEXT }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: ${{ inputs.push_image }}
+          provenance: false
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=registry,ref=${{ env.REGISTRY_URL }}/${{ env.CACHE_IMAGE }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_URL }}/${{ env.CACHE_IMAGE }},mode=max
