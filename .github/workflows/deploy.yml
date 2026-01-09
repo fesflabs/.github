@@ -72,8 +72,8 @@ jobs:
         env:
           TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           NETWORK_NAME: ${{ vars.NETWORK_NAME }}
-          IMAGE_TAG: ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:$TARGET_SHA
         run: |
+          export IMAGE_TAG="${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:$TARGET_SHA"
           echo "🚀 Baixando imagem: $IMAGE_TAG"
           docker compose pull ${{ inputs.service_name }}
 
