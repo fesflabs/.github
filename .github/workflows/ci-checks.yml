@@ -1,4 +1,4 @@
-name: CI Centralizado (Build/Test)
+name: CI Centralizado (Build & Push)
 
 on:
   workflow_call:
@@ -7,87 +7,92 @@ on:
         description: "Tipo de projeto: 'backend' ou 'frontend'"
         required: true
         type: string
-      service_name:
-        description: "Nome do serviço no docker-compose (ex: python-back, front_end)"
+      image_name:
+        description: "Nome da imagem no registry (ex: td_ppe_back)"
         required: true
         type: string
-      working_directory:
-        description: "Caminho da pasta onde está o docker-compose.yml (ex: docker/develop)"
+      image_tag:
+        description: "Tag da imagem (ex: develop, pr-123)"
+        required: true
+        type: string
+      context_dir:
+        description: "Diretório de contexto do Docker (onde está o Dockerfile)"
         required: false
         default: "."
         type: string
       runner_labels:
-        description: "Labels do runner (JSON array)"
+        description: "Labels do runner"
         required: false
         type: string
         default: '["self-hosted", "ci", "ephemeral"]'
     secrets:
       ENV_FILE_CONTENT:
-        description: 'Conteúdo completo do .env'
+        description: 'Conteúdo do .env (Necessário para build de Frontend)'
+        required: false
+      REGISTRY_USER:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+    # Variaveis globais (Repository Variables)
+    vars:
+      ORG_REGISTRY_URL:
         required: true
 
 jobs:
-  build-test:
-    name: Build & Test
+  build-push:
+    name: Build & Push
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     
     steps:
-      - name: Checkout do código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # --- SETUP DE AMBIENTE (Node/PNPM apenas se for frontend) ---
-      - name: Configuração Node.js
-        if: ${{ inputs.project_type == 'frontend' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Instalação do pnpm
+      # --- CONFIGURAÇÃO FRONTEND (Se necessário) ---
+      - name: Setup Node/PNPM (Frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: pnpm/action-setup@v4
         with:
           version: 10
-          run_install: false
-
-      - name: Obter diretório de cache do pnpm
+      
+      - name: Instalar Dependências (Frontend)
         if: ${{ inputs.project_type == 'frontend' }}
-        id: pnpm-cache
-        shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+          pnpm install --frozen-lockfile
+          # Cria .env apenas com vars públicas para o build do Next.js
+          echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_" > .env || true
 
-      - name: Configurar cache do Runner
-        if: ${{ inputs.project_type == 'frontend' }}
-        uses: actions/cache@v4
+      # --- CONFIGURAÇÃO DOCKER BUILDX ---
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-v1-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-v1-
+          driver-opts: image=moby/buildkit:latest
+          # Permite HTTP inseguro para seu registry local (192.168...)
+          buildkitd-config-inline: |
+            [registry."${{ vars.ORG_REGISTRY_URL }}"]
+              http = true
+              insecure = true
 
-      - name: Instalar dependências (Frozen Lockfile)
-        if: ${{ inputs.project_type == 'frontend' }}
-        run: pnpm install --frozen-lockfile
+      - name: Login no Registry Privado
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ORG_REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # --- PREPARAÇÃO DO BUILD ---
-      - name: Criar .env para build
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          if [ "${{ inputs.project_type }}" == "frontend" ]; then
-            echo "Criando .env específico para Frontend..."
-            # Filtra apenas variáveis públicas necessárias para o build do Next.js
-            echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_" > .env || true
-          else
-            echo "Criando .env genérico para Backend..."
-            echo "DUMMY_VAR=DUMMY_VALUE" > .env
-          fi
+      # --- BUILD E PUSH ---
+      - name: Build e Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.context_dir }}
+          push: true
+          provenance: false
+          tags: |
+            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:${{ github.sha }}
+          # Cache inteligente usando o registry
+          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:buildcache
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:buildcache,mode=max
 
-      - name: Build Docker (BuildKit)
-        working-directory: ${{ inputs.working_directory }}
-        env:
-          DOCKER_BUILDKIT: 1
-        run: docker compose build --pull ${{ inputs.service_name }}
-
-      - name: Limpar imagens Docker não utilizadas
+      - name: Limpeza Pós-Build
         if: always()
         run: docker image prune -f
