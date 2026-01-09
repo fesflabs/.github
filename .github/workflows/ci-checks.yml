@@ -16,6 +16,11 @@ on:
         required: false
         default: "."
         type: string
+      build_context:
+        description: "Contexto do Docker Build (onde está o Dockerfile)"
+        required: false
+        default: "."
+        type: string
       runner_labels:
         description: "Labels do runner de build"
         required: false
@@ -93,7 +98,7 @@ jobs:
       - name: Build e Push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ inputs.working_directory }}
+          context: ${{ inputs.build_context }}
           push: true
           provenance: false
           # Tags: Gera a tag específica (ex: develop) e o SHA do commit
