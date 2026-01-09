@@ -1,39 +1,42 @@
-name: CI Centralizado (Build & Push)
+name: CI Centralizado (Build, Test & Push)
 
 on:
   workflow_call:
     inputs:
       project_type:
-        description: "Tipo de projeto: 'backend' ou 'frontend'"
+        description: "Tipo: 'backend' ou 'frontend'"
         required: true
         type: string
-      image_name:
-        description: "Nome da imagem no registry (ex: td_ppe_back)"
+      service_name:
+        description: "Nome do serviço no docker-compose (ex: python-back)"
         required: true
         type: string
-      image_tag:
-        description: "Tag da imagem (ex: develop, pr-123)"
-        required: true
-        type: string
-      context_dir:
-        description: "Diretório de contexto do Docker (onde está o Dockerfile)"
+      working_directory:
+        description: "Diretório do docker-compose"
         required: false
         default: "."
         type: string
       runner_labels:
-        description: "Labels do runner"
+        description: "Labels do runner de build"
         required: false
         type: string
         default: '["self-hosted", "ci", "ephemeral"]'
+      # Novos inputs para controle do Registry
+      image_name:
+        description: "Nome da imagem (ex: td_ppe_back/develop)"
+        required: true
+        type: string
+      cache_image:
+        description: "Nome da imagem de cache"
+        required: true
+        type: string
     secrets:
       ENV_FILE_CONTENT:
-        description: 'Conteúdo do .env (Necessário para build de Frontend)'
-        required: false
-      REGISTRY_USER:
+        required: true
+      REGISTRY_USERNAME:
         required: true
       REGISTRY_PASSWORD:
         required: true
-    # Variaveis globais (Repository Variables)
     vars:
       ORG_REGISTRY_URL:
         required: true
@@ -47,52 +50,67 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- CONFIGURAÇÃO FRONTEND (Se necessário) ---
-      - name: Setup Node/PNPM (Frontend)
+      # --- SETUP DE PREPARAÇÃO (Node/PNPM) ---
+      - name: Setup Node (Frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup PNPM (Frontend)
         if: ${{ inputs.project_type == 'frontend' }}
         uses: pnpm/action-setup@v4
         with:
           version: 10
-      
-      - name: Instalar Dependências (Frontend)
-        if: ${{ inputs.project_type == 'frontend' }}
-        run: |
-          pnpm install --frozen-lockfile
-          # Cria .env apenas com vars públicas para o build do Next.js
-          echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_" > .env || true
+          run_install: false
 
-      # --- CONFIGURAÇÃO DOCKER BUILDX ---
+      - name: Install Deps (Frontend)
+        if: ${{ inputs.project_type == 'frontend' }}
+        run: pnpm install --frozen-lockfile
+
+      # --- PREPARAÇÃO DO .ENV ---
+      - name: Criar .env para Build
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          if [ "${{ inputs.project_type }}" == "frontend" ]; then
+            echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_" > .env || true
+          else
+            echo "DUMMY_VAR=DUMMY_VALUE" > .env
+          fi
+
+      # --- SETUP DO REGISTRY (CRÍTICO) ---
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: image=moby/buildkit:latest
-          # Permite HTTP inseguro para seu registry local (192.168...)
+          # Permite HTTP para seu IP local (192.168.1.9)
           buildkitd-config-inline: |
             [registry."${{ vars.ORG_REGISTRY_URL }}"]
               http = true
               insecure = true
 
-      - name: Login no Registry Privado
+      - name: Login no Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.ORG_REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       # --- BUILD E PUSH ---
       - name: Build e Push
         uses: docker/build-push-action@v5
         with:
-          context: ${{ inputs.context_dir }}
+          context: ${{ inputs.working_directory }}
           push: true
           provenance: false
+          # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
-            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:${{ github.sha }}
-          # Cache inteligente usando o registry
-          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:buildcache
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:buildcache,mode=max
+            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}
+          # Cache usando o Registry (MinIO)
+          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.cache_image }}
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.cache_image }},mode=max
 
-      - name: Limpeza Pós-Build
+      - name: Limpeza
         if: always()
         run: docker image prune -f

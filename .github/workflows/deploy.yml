@@ -4,71 +4,85 @@ on:
   workflow_call:
     inputs:
       service_name:
-        description: "Nome do serviço a ser deployado"
+        description: "Nome do serviço no docker-compose"
         required: true
         type: string
       working_directory:
-        description: "Caminho da pasta onde está o docker-compose.yml"
+        description: "Diretório do docker-compose"
         required: false
         default: "."
         type: string
       runner_labels:
-        description: "Labels do runner de deploy (JSON array)"
+        description: "Labels do runner de deploy"
+        required: true
+        type: string
+      image_full_tag:
+        description: "Imagem completa para deploy (ex: 192.168.../back:sha)"
         required: true
         type: string
     secrets:
       ENV_FILE_CONTENT:
-        description: 'Conteúdo do .env para produção/develop'
+        required: true
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+    vars:
+      ORG_REGISTRY_URL:
         required: true
 
 jobs:
   check-approvals:
-    name: Verificar Aprovação do PR
+    name: Verificar Aprovação
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar Status do Review
+      - name: Verificar Reviews
         uses: actions/github-script@v7
         with:
           script: |
-            if (!context.payload.pull_request) {
-              console.log("Não é um PR, pulando verificação.");
-              return;
-            }
+            if (!context.payload.pull_request) return;
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
             });
             const approved = reviews.some(r => r.state === "APPROVED");
-            if (!approved) {
-              core.setFailed("❌ O PR foi mergeado sem aprovação. Bloqueando deploy.");
-            } else {
-              console.log("✅ PR aprovado. Prosseguindo.");
-            }
+            if (!approved) core.setFailed("❌ PR sem aprovação. Deploy bloqueado.");
 
   deploy:
-    name: Deploy Cirúrgico
+    name: Deploy
     needs: check-approvals
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     
     steps:
-      - name: Checkout do código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Criar arquivo .env
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          echo "Gerando .env em ${{ inputs.working_directory }}..."
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+      # --- LOGIN NECESSÁRIO PARA PULL ---
+      - name: Login no Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ORG_REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Docker Compose Up (No-Deps)
+      - name: Gerar .env
         working-directory: ${{ inputs.working_directory }}
+        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      # --- DEPLOY ---
+      - name: Atualizar Serviço
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          # Injeta a variável IMAGE_TAG para o docker-compose usar
+          IMAGE_TAG: ${{ inputs.image_full_tag }}
         run: |
-          echo "🚀 Atualizando serviço: ${{ inputs.service_name }}"
-          # --force-recreate: Garante que o container seja recriado com a nova imagem
-          # --no-deps: Não reinicia banco de dados ou outros serviços linkados
+          echo "🚀 Baixando imagem: $IMAGE_TAG"
+          docker compose pull ${{ inputs.service_name }}
+          
+          echo "🚀 Recriando container..."
           docker compose up -d --force-recreate --no-deps ${{ inputs.service_name }}
 
-      - name: Limpeza Pós-Deploy
+      - name: Limpeza
         if: always()
         run: docker image prune -f
