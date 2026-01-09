@@ -70,11 +70,13 @@ jobs:
       - name: Atualizar Serviço
         working-directory: ${{ inputs.working_directory }}
         env:
-          IMAGE_TAG: ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.sha }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
+          IMAGE_TAG: ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:$TARGET_SHA
         run: |
           echo "🚀 Baixando imagem: $IMAGE_TAG"
           docker compose pull ${{ inputs.service_name }}
-          
+
           echo "🚀 Recriando container..."
           docker compose up -d --force-recreate --no-deps ${{ inputs.service_name }}
 
