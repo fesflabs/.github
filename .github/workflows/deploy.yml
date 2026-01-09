@@ -27,9 +27,6 @@ on:
         required: true
       REGISTRY_PASSWORD:
         required: true
-    vars:
-      ORG_REGISTRY_URL:
-        required: true
 
 jobs:
   check-approvals:
