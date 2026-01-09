@@ -103,7 +103,7 @@ jobs:
           provenance: false
           # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
-            ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.sha }}
+            ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
           # Cache usando o Registry (MinIO)
           cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
