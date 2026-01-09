@@ -16,8 +16,8 @@ on:
         description: "Labels do runner de deploy"
         required: true
         type: string
-      image_full_tag:
-        description: "Imagem completa para deploy (ex: 192.168.../back:sha)"
+      environment_name:
+        description: "Ambiente para carregar as variáveis (develop, homolog, prod)"
         required: true
         type: string
     secrets:
@@ -50,12 +50,12 @@ jobs:
     name: Deploy
     needs: check-approvals
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- LOGIN NECESSÁRIO PARA PULL ---
       - name: Login no Registry
         uses: docker/login-action@v3
         with:
@@ -67,12 +67,10 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-      # --- DEPLOY ---
       - name: Atualizar Serviço
         working-directory: ${{ inputs.working_directory }}
         env:
-          # Injeta a variável IMAGE_TAG para o docker-compose usar
-          IMAGE_TAG: ${{ inputs.image_full_tag }}
+          IMAGE_TAG: ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.sha }}
         run: |
           echo "🚀 Baixando imagem: $IMAGE_TAG"
           docker compose pull ${{ inputs.service_name }}

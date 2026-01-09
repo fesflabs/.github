@@ -21,13 +21,8 @@ on:
         required: false
         type: string
         default: '["self-hosted", "ci", "ephemeral"]'
-      # Novos inputs para controle do Registry
-      image_name:
-        description: "Nome da imagem (ex: td_ppe_back/develop)"
-        required: true
-        type: string
-      cache_image:
-        description: "Nome da imagem de cache"
+      environment_name:
+        description: "Ambiente para carregar as variáveis (develop, homolog, prod)"
         required: true
         type: string
     secrets:
@@ -42,6 +37,7 @@ jobs:
   build-push:
     name: Build & Push
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
     
     steps:
       - name: Checkout
@@ -102,11 +98,11 @@ jobs:
           provenance: false
           # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
-            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}:${{ github.sha }}
-            ${{ vars.ORG_REGISTRY_URL }}/${{ inputs.image_name }}
+            ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.sha }}
+            ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
           # Cache usando o Registry (MinIO)
-          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.cache_image }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ inputs.cache_image }},mode=max
+          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max
 
       - name: Limpeza
         if: always()
