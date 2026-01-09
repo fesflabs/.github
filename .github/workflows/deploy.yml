@@ -1,39 +1,74 @@
-name: Deploy Genérico Multi-Serviços (Backend/Frontend)
+name: CD Centralizado (Deploy)
 
 on:
   workflow_call:
     inputs:
-      runner:
-        description: "Runner onde o job vai rodar"
-        required: false
-        type: string
-        default: '["self-hosted"]'
       service_name:
-        description: "Nome do serviço a ser deployado (ex: python-back)"
+        description: "Nome do serviço a ser deployado"
+        required: true
+        type: string
+      working_directory:
+        description: "Caminho da pasta onde está o docker-compose.yml"
+        required: false
+        default: "."
+        type: string
+      runner_labels:
+        description: "Labels do runner de deploy (JSON array)"
         required: true
         type: string
     secrets:
-      ENV_FILE:
-        description: 'O conteúdo do arquivo .env para o deploy.'
+      ENV_FILE_CONTENT:
+        description: 'Conteúdo do .env para produção/develop'
         required: true
 
 jobs:
+  check-approvals:
+    name: Verificar Aprovação do PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar Status do Review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (!context.payload.pull_request) {
+              console.log("Não é um PR, pulando verificação.");
+              return;
+            }
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+            const approved = reviews.some(r => r.state === "APPROVED");
+            if (!approved) {
+              core.setFailed("❌ O PR foi mergeado sem aprovação. Bloqueando deploy.");
+            } else {
+              console.log("✅ PR aprovado. Prosseguindo.");
+            }
+
   deploy:
-    name: Deploy Rápido de Serviço
-    runs-on: ${{ fromJSON(inputs.runner) }}
+    name: Deploy Cirúrgico
+    needs: check-approvals
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Criar .env a partir do secret
-        run: echo "${{ secrets.ENV_FILE }}" > .env
-
-      - name: Deploy Cirúrgico do Serviço
+      - name: Criar arquivo .env
+        working-directory: ${{ inputs.working_directory }}
         run: |
-          echo "Iniciando deploy para o serviço: ${{ inputs.service_name }}"
-          # A flag --no-deps é uma segurança extra para não reiniciar dependências.
+          echo "Gerando .env em ${{ inputs.working_directory }}..."
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+
+      - name: Docker Compose Up (No-Deps)
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          echo "🚀 Atualizando serviço: ${{ inputs.service_name }}"
+          # --force-recreate: Garante que o container seja recriado com a nova imagem
+          # --no-deps: Não reinicia banco de dados ou outros serviços linkados
           docker compose up -d --force-recreate --no-deps ${{ inputs.service_name }}
 
-      - name: Limpar imagens Docker não utilizadas
+      - name: Limpeza Pós-Deploy
         if: always()
         run: docker image prune -f
