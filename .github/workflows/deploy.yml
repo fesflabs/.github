@@ -77,7 +77,7 @@ jobs:
           docker compose pull ${{ inputs.service_name }}
 
           echo "🚀 Recriando container..."
-          docker compose up -d --force-recreate --no-deps ${{ inputs.service_name }}
+          docker compose up -d ${{ inputs.service_name }}
 
       - name: Limpeza
         if: always()
