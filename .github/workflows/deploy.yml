@@ -108,6 +108,8 @@ jobs:
           echo "PROD_DB_NAME=${{ secrets.PROD_DB_NAME }}" >> .env
           echo "PROD_DB_USER=${{ secrets.PROD_DB_USER }}" >> .env
           echo "PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
+          echo "PROD_LOG_LEVEL=${{ secrets.PROD_LOG_LEVEL }}" >> .env
+          echo "PROD_RELOAD=${{ secrets.PROD_RELOAD }}" >> .env
           
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           
