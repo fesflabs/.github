@@ -21,8 +21,6 @@ on:
         required: true
         type: string
     secrets:
-      ENV_FILE_CONTENT:
-        required: true
       REGISTRY_USERNAME:
         required: true
       REGISTRY_PASSWORD:
