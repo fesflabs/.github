@@ -36,6 +36,10 @@ on:
         required: true
       PROD_DB_PASSWORD:
         required: true
+      PROD_LOG_LEVEL:
+        required: true
+      PROD_RELOAD:
+        required: true
       JWT_SECRET:
         required: true
       MAIL_USERNAME:
