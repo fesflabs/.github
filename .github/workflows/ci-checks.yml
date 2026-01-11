@@ -71,9 +71,12 @@ jobs:
           if [ "${{ inputs.project_type }}" == "frontend" ]; then
             echo "NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}" > .env
             echo "NEXT_PUBLIC_AUTH_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
+            echo "NEXT_PUBLIC_TITLE=${{ vars.TITLE }}" >> .env
           else
             echo "DUMMY_VAR=DUMMY_VALUE" > .env
           fi
+
+          cat .env
 
       # --- SETUP DO REGISTRY (CRÍTICO) ---
       - name: Configurar Docker Buildx

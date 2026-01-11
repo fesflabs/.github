@@ -115,6 +115,8 @@ jobs:
           echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
           echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
 
+          cat .env
+
       - name: Atualizar Serviço
         working-directory: ${{ inputs.working_directory }}
         env:
