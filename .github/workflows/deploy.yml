@@ -103,7 +103,7 @@ jobs:
           echo "TITLE=${{ vars.TITLE }}" >> .env
           
           # Se o LOG_LEVEL mudar por ambiente, use vars.LOG_LEVEL, senão hardcode ou secret
-          echo "LOG_LEVEL=INFO" >> .env 
+          echo "LOG_LEVEL=info" >> .env 
 
           # 2. Segredos (Repository Secrets - Criptografados)
           # O GitHub vai substituir pelo valor correto do Environment (Develop/Prod)
