@@ -31,8 +31,6 @@ on:
         required: true
         type: string
     secrets:
-      ENV_FILE_CONTENT:
-        required: true
       REGISTRY_USERNAME:
         required: true
       REGISTRY_PASSWORD:
@@ -71,7 +69,8 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: |
           if [ "${{ inputs.project_type }}" == "frontend" ]; then
-            echo "${{ secrets.ENV_FILE_CONTENT }}" | grep "NEXT_PUBLIC_" > .env || true
+            echo "NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}" > .env
+            echo "NEXT_PUBLIC_AUTH_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
           else
             echo "DUMMY_VAR=DUMMY_VALUE" > .env
           fi
