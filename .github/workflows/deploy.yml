@@ -7,6 +7,10 @@ on:
         description: "Nome do serviço no docker-compose"
         required: true
         type: string
+      project_type:
+        description: "Tipo: 'backend' ou 'frontend'"
+        required: true
+        type: string
       working_directory:
         description: "Diretório do docker-compose"
         required: false
@@ -94,32 +98,37 @@ jobs:
           touch .env
 
           echo "--- Gerando configurações de ambiente ---"
-          
-          # 1. Variáveis de Contexto (Repository Variables - Texto Claro)
-          echo "API_ROOT_PATH=${{ vars.API_ROOT_PATH }}" >> .env
-          echo "API_V1_STR=${{ vars.API_V1_STR }}" >> .env
-          echo "AUTH_SERVICE_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
-          echo "TIPO_AMBIENTE=${{ vars.TIPO_AMBIENTE }}" >> .env
-          echo "TITLE=${{ vars.TITLE }}" >> .env
-          
-          # Se o LOG_LEVEL mudar por ambiente, use vars.LOG_LEVEL, senão hardcode ou secret
-          echo "LOG_LEVEL=info" >> .env 
+          if [ "${{ inputs.project_type }}" == "backend" ]; then
+            echo "API_ROOT_PATH=${{ vars.API_ROOT_PATH }}" >> .env
+            echo "API_V1_STR=${{ vars.API_V1_STR }}" >> .env
+            echo "AUTH_SERVICE_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
+            echo "TIPO_AMBIENTE=${{ vars.TIPO_AMBIENTE }}" >> .env
+            echo "TITLE=${{ vars.TITLE }}" >> .env
+            
+            echo "LOG_LEVEL=info" >> .env 
 
-          # 2. Segredos (Repository Secrets - Criptografados)
-          # O GitHub vai substituir pelo valor correto do Environment (Develop/Prod)
-          echo "PROD_DB_HOST=${{ secrets.PROD_DB_HOST }}" >> .env
-          echo "PROD_DB_PORT=${{ secrets.PROD_DB_PORT }}" >> .env
-          echo "PROD_DB_NAME=${{ secrets.PROD_DB_NAME }}" >> .env
-          echo "PROD_DB_USER=${{ secrets.PROD_DB_USER }}" >> .env
-          echo "PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
-          echo "PROD_LOG_LEVEL=${{ secrets.PROD_LOG_LEVEL }}" >> .env
-          echo "PROD_RELOAD=${{ secrets.PROD_RELOAD }}" >> .env
-          
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-          
-          echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" >> .env
-          echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
-          echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
+            # 2. Segredos (Repository Secrets - Criptografados)
+            echo "PROD_DB_HOST=${{ secrets.PROD_DB_HOST }}" >> .env
+            echo "PROD_DB_PORT=${{ secrets.PROD_DB_PORT }}" >> .env
+            echo "PROD_DB_NAME=${{ secrets.PROD_DB_NAME }}" >> .env
+            echo "PROD_DB_USER=${{ secrets.PROD_DB_USER }}" >> .env
+            echo "PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
+            echo "PROD_LOG_LEVEL=${{ secrets.PROD_LOG_LEVEL }}" >> .env
+            echo "PROD_RELOAD=${{ secrets.PROD_RELOAD }}" >> .env
+            
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            
+            echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" >> .env
+            echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
+            echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
+          else
+            echo "NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
+            echo "NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}" >> .env
+            echo "NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}" >> .env
+            echo "NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}" >> .env
+            echo "NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}" >> .env
+            echo "NEXT_PUBLIC_TITLE=${{ vars.TITLE }}" >> .env
+          fi
 
           cat .env
 
