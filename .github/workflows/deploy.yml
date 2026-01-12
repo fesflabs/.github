@@ -30,28 +30,28 @@ on:
       REGISTRY_PASSWORD:
         required: true
       # Segredos da Aplicação (Definidos no Environment)
-      # PROD_DB_HOST:
-      #   required: true
-      # PROD_DB_PORT:
-      #   required: true
-      # PROD_DB_NAME:
-      #   required: true
-      # PROD_DB_USER:
-      #   required: true
-      # PROD_DB_PASSWORD:
-      #   required: true
-      # PROD_LOG_LEVEL:
-      #   required: true
-      # PROD_RELOAD:
-      #   required: true
-      # JWT_SECRET:
-      #   required: true
-      # MAIL_USERNAME:
-      #   required: true
-      # MAIL_PASSWORD:
-      #   required: true
-      # MAIL_FROM:
-      #   required: true
+      PROD_DB_HOST:
+        required: false
+      PROD_DB_PORT:
+        required: false
+      PROD_DB_NAME:
+        required: false
+      PROD_DB_USER:
+        required: false
+      PROD_DB_PASSWORD:
+        required: false
+      PROD_LOG_LEVEL:
+        required: false
+      PROD_RELOAD:
+        required: false
+      JWT_SECRET:
+        required: false
+      MAIL_USERNAME:
+        required: false
+      MAIL_PASSWORD:
+        required: false
+      MAIL_FROM:
+        required: false
 
 jobs:
 
