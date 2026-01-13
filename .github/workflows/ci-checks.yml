@@ -35,18 +35,6 @@ on:
         required: true
       REGISTRY_PASSWORD:
         required: true
-      NEXT_PUBLIC_API_URL:
-        required: false
-      NEXT_PUBLIC_URL:
-        required: false
-      NEXT_PUBLIC_BASE_PATH:
-        required: false
-      NEXT_PUBLIC_FEATURE_FLAGS_ENABLED:
-        required: false
-      NEXT_PUBLIC_PORTAL_BASE_URL:
-        required: false
-      NEXT_PUBLIC_TITLE:
-        required: false
 
 jobs:
   build-and-push-frontend:
