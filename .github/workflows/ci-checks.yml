@@ -49,13 +49,11 @@ jobs:
       
       # --- SETUP DE PREPARAÇÃO (Node/PNPM) ---
       - name: Setup Node (Frontend)
-        if: ${{ inputs.project_type == 'frontend' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Setup PNPM (Frontend)
-        if: ${{ inputs.project_type == 'frontend' }}
         uses: pnpm/action-setup@v4
         with:
           version: 10
