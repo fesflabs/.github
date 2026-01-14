@@ -91,17 +91,6 @@ jobs:
           version: 10
           run_install: false
 
-      # --- PREPARAÇÃO DO .ENV ---
-      - name: Criar .env para Build
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          echo "NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
-          echo "NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}" >> .env
-          echo "NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}" >> .env
-          echo "NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}" >> .env
-          echo "NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}" >> .env
-          echo "NEXT_PUBLIC_TITLE=${{ vars.TITLE }}" >> .env
-
       # --- SETUP DO REGISTRY  ---
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -120,6 +109,14 @@ jobs:
           context: ${{ inputs.build_context }}
           push: true
           provenance: false
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}
+            NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}
+            NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}
+            NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}
+            NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}
+            NEXT_PUBLIC_TITLE=${{ vars.TITLE }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
           # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
