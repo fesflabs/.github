@@ -52,6 +52,8 @@ on:
         required: false
       MAIL_FROM:
         required: false
+      SECRET_CODE:
+        required: false
 
 jobs:
 
