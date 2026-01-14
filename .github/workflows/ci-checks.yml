@@ -70,6 +70,7 @@ jobs:
 
   build-frontend:
     name: Build Frontend
+    needs: quality-checks
     if: ${{ inputs.project_type == 'frontend' }}
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     environment: ${{ inputs.environment_name }}
