@@ -83,7 +83,7 @@ jobs:
         run: pnpm type-check
 
   build-frontend:
-    name: Build Frontend
+    name: Build and Push Frontend
     needs: quality-checks
     if: ${{ inputs.project_type == 'frontend' }}
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
@@ -144,7 +144,7 @@ jobs:
         run: docker image prune -f
 
   build-and-push-backend:
-    name: Build and Push (${{ inputs.project_type }})
+    name: Build and Push Backend
     if: ${{ inputs.project_type == 'backend' }}
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     environment: ${{ inputs.environment_name }}
