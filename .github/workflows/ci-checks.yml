@@ -59,6 +59,20 @@ jobs:
           version: 10
           run_install: false
 
+      - name: Cache PNPM Store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-${{ runner.os }}-
+
+      - name: Cache Next.js
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
       
