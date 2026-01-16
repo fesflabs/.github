@@ -1,4 +1,4 @@
-name: CI Centralizado (Build, Test & Push)
+name: CI Centralizado Otimizado (Build, Test & Push)
 
 on:
   workflow_call:
@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       service_name:
-        description: "Nome do serviço no docker-compose (ex: python-back)"
+        description: "Nome do serviço no docker-compose"
         required: true
         type: string
       working_directory:
@@ -17,7 +17,7 @@ on:
         default: "."
         type: string
       build_context:
-        description: "Contexto do Docker Build (onde está o Dockerfile)"
+        description: "Contexto do Docker Build"
         required: false
         default: "."
         type: string
@@ -27,7 +27,7 @@ on:
         type: string
         default: '["self-hosted", "ci", "ephemeral"]'
       environment_name:
-        description: "Ambiente para carregar as variáveis (develop, homolog, prod)"
+        description: "Ambiente (develop, homolog, prod)"
         required: true
         type: string
     secrets:
@@ -47,7 +47,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      # --- SETUP DE PREPARAÇÃO (Node/PNPM) ---
+      # --- CACHE STRATEGIES ---
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -59,19 +59,30 @@ jobs:
           version: 10
           run_install: false
 
-      - name: Cache PNPM Store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-${{ runner.os }}-
+      # Cache do PNPM Store (reutiliza entre workflows)
+      - name: Get PNPM store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - name: Cache Next.js
+      - name: Setup PNPM Cache
         uses: actions/cache@v4
         with:
-          path: .next/cache
-          key: next-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      # Cache do Next.js (acelera builds subsequentes)
+      - name: Setup Next.js Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: next-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            next-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            next-cache-${{ runner.os }}-
 
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
@@ -93,7 +104,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      # --- SETUP DE PREPARAÇÃO (Node/PNPM) ---
       - name: Setup Node 
         uses: actions/setup-node@v4
         with:
@@ -105,19 +115,29 @@ jobs:
           version: 10
           run_install: false
 
-      # --- SETUP DO REGISTRY  ---
+      # --- DOCKER BUILDKIT COM CACHE OTIMIZADO ---
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: image=moby/buildkit:latest
-          # Permite HTTP para seu IP local (192.168.1.9)
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
           buildkitd-config-inline: |
             [registry."${{ vars.ORG_REGISTRY_URL }}"]
               http = true
               insecure = true
+            [worker.oci]
+              max-parallelism = 4
 
-      # --- BUILD E PUSH ---
-      - name: Build and Push
+      - name: Login no Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ORG_REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      # --- BUILD COM MÚLTIPLAS CAMADAS DE CACHE ---
+      - name: Build and Push (Multi-layer Cache)
         uses: docker/build-push-action@v5
         with:
           context: ${{ inputs.build_context }}
@@ -131,17 +151,20 @@ jobs:
             NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}
             NEXT_PUBLIC_TITLE=${{ vars.TITLE }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-          # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          # Cache usando o Registry (MinIO)
-          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max
+          # OTIMIZAÇÃO: Múltiplas fontes de cache
+          cache-from: |
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache,mode=max,compression=zstd
 
-      - name: Limpeza
+      - name: Limpeza Inteligente
         if: always()
-        run: docker image prune -f
+        run: |
+          # Remove apenas dangling images, preserva cache
+          docker image prune -f --filter "dangling=true"
 
   build-and-push-backend:
     name: Build and Push Backend
@@ -153,18 +176,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- PREPARAÇÃO DO .ENV ---
       - name: Criar .env para Build
         working-directory: ${{ inputs.working_directory }}
-        run: |
-          echo "DUMMY_VAR=DUMMY_VALUE" > .env
+        run: echo "DUMMY_VAR=DUMMY_VALUE" > .env
 
-      # --- SETUP DO REGISTRY  ---
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: image=moby/buildkit:latest
-          # Permite HTTP para seu IP local (192.168.1.9)
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
           buildkitd-config-inline: |
             [registry."${{ vars.ORG_REGISTRY_URL }}"]
               http = true
@@ -177,22 +198,20 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # --- BUILD E PUSH ---
-      
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: ${{ inputs.build_context }}
           push: true
           provenance: false
-          # Tags: Gera a tag específica (ex: develop) e o SHA do commit
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          # Cache usando o Registry (MinIO)
-          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max
+          cache-from: |
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache,mode=max,compression=zstd
 
       - name: Limpeza
         if: always()
-        run: docker image prune -f
+        run: docker image prune -f --filter "dangling=true"
