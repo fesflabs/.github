@@ -154,11 +154,10 @@ jobs:
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          # OTIMIZAÇÃO: Múltiplas fontes de cache
           cache-from: |
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
             type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache,mode=max,compression=zstd
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max,compression=zstd
 
       - name: Limpeza Inteligente
         if: always()
@@ -208,9 +207,9 @@ jobs:
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
           cache-from: |
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache
+            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
             type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}:buildcache,mode=max,compression=zstd
+          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max,compression=zstd
 
       - name: Limpeza
         if: always()
