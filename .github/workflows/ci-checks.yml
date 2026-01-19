@@ -1,4 +1,4 @@
-name: CI Centralizado Otimizado (Build, Test & Push)
+name: CI Centralizado Ultra-Otimizado (Cache Não-Bloqueante)
 
 on:
   workflow_call:
@@ -47,7 +47,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      # --- CACHE STRATEGIES ---
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -59,22 +58,21 @@ jobs:
           version: 10
           run_install: false
 
-      # Cache do PNPM Store (reutiliza entre workflows)
       - name: Get PNPM store directory
         id: pnpm-cache
         shell: bash
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      - name: Setup PNPM Cache
+      - name: Setup PNPM Cache (Non-blocking)
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             pnpm-store-${{ runner.os }}-
+          save-always: true
 
-      # Cache do Next.js (acelera builds subsequentes)
-      - name: Setup Next.js Cache
+      - name: Setup Next.js Cache (Non-blocking)
         uses: actions/cache@v4
         with:
           path: |
@@ -83,6 +81,7 @@ jobs:
           restore-keys: |
             next-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
             next-cache-${{ runner.os }}-
+          save-always: true
 
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
@@ -103,19 +102,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Node 
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
-      - name: Setup PNPM 
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
-
-      # --- DOCKER BUILDKIT COM CACHE OTIMIZADO ---
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -128,6 +115,14 @@ jobs:
               insecure = true
             [worker.oci]
               max-parallelism = 4
+          config-inline: |
+            [worker.oci]
+              gc = true
+              gckeepstorage = 10000
+              [[worker.oci.gcpolicy]]
+                keepBytes = 5368709120
+                keepDuration = 172800
+                filters = [ "type==source.local", "type==exec.cachemount", "type==source.git.checkout"]
 
       - name: Login no Registry
         uses: docker/login-action@v3
@@ -136,8 +131,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # --- BUILD COM MÚLTIPLAS CAMADAS DE CACHE ---
-      - name: Build and Push (Multi-layer Cache)
+      - name: Build and Push (Cache Inline)
         uses: docker/build-push-action@v5
         with:
           context: ${{ inputs.build_context }}
@@ -154,15 +148,15 @@ jobs:
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-from: |
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max,compression=zstd
+          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=inline
+          # cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
+          # cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max
 
       - name: Limpeza Inteligente
         if: always()
         run: |
-          # Remove apenas dangling images, preserva cache
+          # Remove apenas dangling images
           docker image prune -f --filter "dangling=true"
 
   build-and-push-backend:
@@ -189,6 +183,8 @@ jobs:
             [registry."${{ vars.ORG_REGISTRY_URL }}"]
               http = true
               insecure = true
+            [worker.oci]
+              max-parallelism = 4
 
       - name: Login no Registry
         uses: docker/login-action@v3
@@ -206,10 +202,8 @@ jobs:
           tags: |
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-from: |
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }}
-            type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
-          cache-to: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_CACHE_IMAGE_NAME }},mode=max,compression=zstd
+          cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=inline
 
       - name: Limpeza
         if: always()
