@@ -46,28 +46,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
           version: 10
-          run_install: false
 
-      - name: Restore Next.js Cache
-        id: cache-nextjs-restore
-        uses: actions/cache/restore@v4
+      - name: Setup Node with PNPM Cache
+        uses: actions/setup-node@v4
         with:
-          path: |
-            .next/cache
-          key: next-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
-          restore-keys: |
-            next-cache-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-
-            next-cache-${{ runner.os }}-
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
@@ -78,13 +67,6 @@ jobs:
       - name: Executar Type Check
         run: pnpm type-check
 
-      - name: Save Next.js Cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .next/cache
-          key: ${{ steps.cache-nextjs-restore.outputs.cache-primary-key }}
 
   build-frontend:
     name: Build and Push Frontend
@@ -117,7 +99,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Build and Push (Cache Inline)
+      - name: Build and Push
         uses: docker/build-push-action@v5
         with:
           context: ${{ inputs.build_context }}
@@ -137,10 +119,9 @@ jobs:
           cache-from: type=registry,ref=${{ vars.ORG_REGISTRY_URL }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
           cache-to: type=inline
 
-      - name: Limpeza Inteligente
+      - name: Limpeza
         if: always()
-        run: |
-          docker image prune -f --filter "dangling=true"
+        run: docker image prune -f --filter "dangling=true"
 
   build-and-push-backend:
     name: Build and Push Backend
