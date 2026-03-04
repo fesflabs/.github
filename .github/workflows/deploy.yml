@@ -130,6 +130,7 @@ jobs:
             echo "REDIS_HOST=${{secrets.REDIS_HOST}}" >> .env
             echo "REDIS_PORT=${{secrets.REDIS_PORT}}" >> .env
             echo "REDIS_DB=${{secrets.REDIS_DB}}" >> .env
+            echo "REDIS_ENABLED=${{secrets.REDIS_ENABLED}}" >> .env
           else
             echo "NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
             echo "NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}" >> .env
