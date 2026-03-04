@@ -53,6 +53,14 @@ on:
         required: false
       SECRET_CODE:
         required: false
+      REDIS_HOST:
+        required: false
+      REDIS_PORT:
+        required: false
+      REDIS_DB:
+        required: false
+      REDIS_ENABLED:
+        required: false
 
 jobs:
 
