@@ -10,7 +10,7 @@ on:
       project_type:
         description: "Tipo: 'backend' ou 'frontend'"
         required: true
-        type: string
+        type: stringentrypoint
       working_directory:
         description: "Diretório do docker-compose"
         required: false
@@ -152,7 +152,7 @@ jobs:
           docker compose pull ${{ inputs.service_name }}
 
           echo "🚀 Recriando container..."
-          docker compose up -d ${{ inputs.service_name }}
+          docker compose up -d
 
       - name: Limpeza
         if: always()
