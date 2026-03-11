@@ -10,7 +10,7 @@ on:
       project_type:
         description: "Tipo: 'backend' ou 'frontend'"
         required: true
-        type: stringentrypoint
+        type: string
       working_directory:
         description: "Diretório do docker-compose"
         required: false
