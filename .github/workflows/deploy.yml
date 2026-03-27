@@ -164,6 +164,7 @@ jobs:
         if: ${{ inputs.project_type == 'backend' && inputs.migration_command != '' }}
         working-directory: ${{ inputs.working_directory }}
         env:
+          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
           MIGRATION_COMMAND: ${{ inputs.migration_command }}
         run: |
           echo "🚀 Executando migrações: $MIGRATION_COMMAND"
