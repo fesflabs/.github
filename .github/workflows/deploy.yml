@@ -127,6 +127,7 @@ jobs:
             echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" >> .env
             echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
             echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
+            echo "SECRET_CODE=${{ secrets.SECRET_CODE }}" >> .env
             echo "REDIS_HOST=${{secrets.REDIS_HOST}}" >> .env
             echo "REDIS_PORT=${{secrets.REDIS_PORT}}" >> .env
             echo "REDIS_DB=${{secrets.REDIS_DB}}" >> .env
@@ -140,7 +141,7 @@ jobs:
             echo "NEXT_PUBLIC_TITLE=${{ vars.TITLE }}" >> .env
           fi
 
-          cat .env
+          sed 's/=.*/=[redacted]/' .env
 
       - name: Atualizar Serviço
         working-directory: ${{ inputs.working_directory }}
