@@ -16,6 +16,11 @@ on:
         required: false
         default: "."
         type: string
+      migration_command:
+        description: "Comando opcional de migração a ser executado no container do serviço"
+        required: false
+        default: ""
+        type: string
       runner_labels:
         description: "Labels do runner de deploy"
         required: true
@@ -154,6 +159,24 @@ jobs:
 
           echo "🚀 Recriando container..."
           docker compose up -d
+
+      - name: Executar Migrações
+        if: ${{ inputs.project_type == 'backend' && inputs.migration_command != '' }}
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          MIGRATION_COMMAND: ${{ inputs.migration_command }}
+        run: |
+          echo "🚀 Executando migrações: $MIGRATION_COMMAND"
+          for attempt in 1 2 3 4 5; do
+            if docker compose exec -T ${{ inputs.service_name }} sh -lc "$MIGRATION_COMMAND"; then
+              echo "✅ Migrações executadas com sucesso."
+              exit 0
+            fi
+            echo "⏳ Tentativa $attempt falhou. Aguardando container estabilizar..."
+            sleep 5
+          done
+          echo "❌ Não foi possível executar as migrações."
+          exit 1
 
       - name: Limpeza
         if: always()
