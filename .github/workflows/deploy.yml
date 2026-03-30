@@ -110,6 +110,10 @@ jobs:
           touch .env
 
           echo "--- Gerando configurações de ambiente ---"
+          if [ -n "${{ vars.LINK_ACESSO }}" ]; then
+            echo "LINK_ACESSO=${{ vars.LINK_ACESSO }}" >> .env
+          fi
+
           if [ "${{ inputs.project_type }}" == "backend" ]; then
             echo "API_ROOT_PATH=${{ vars.API_ROOT_PATH }}" >> .env
             echo "API_V1_STR=${{ vars.API_V1_STR }}" >> .env
