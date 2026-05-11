@@ -60,7 +60,6 @@ jobs:
 
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
-        env:
       
       - name: Executar Lint
         run: pnpm lint
