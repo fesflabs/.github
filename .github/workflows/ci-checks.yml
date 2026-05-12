@@ -50,16 +50,16 @@ jobs:
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: 10.16.0
-      
-      - name: Configure PNPM Strict Builds
-        run: pnpm config set strict-dep-builds false
+          version: 10
 
       - name: Setup Node with PNPM Cache
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
+      
+      - name: Configure PNPM Strict Builds
+        run: pnpm config set strict-dep-builds false
 
       - name: Instalar Dependências
         run: pnpm install --frozen-lockfile
