@@ -105,49 +105,86 @@ jobs:
 
       - name: Gerar .env Dinâmico
         working-directory: ${{ inputs.working_directory }}
+        env:
+          PROJECT_TYPE: ${{ inputs.project_type }}
+
+          LINK_ACESSO: ${{ vars.LINK_ACESSO }}
+          API_ROOT_PATH: ${{ vars.API_ROOT_PATH }}
+          API_V1_STR: ${{ vars.API_V1_STR }}
+          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
+          TIPO_AMBIENTE: ${{ vars.TIPO_AMBIENTE }}
+          TITLE: ${{ vars.TITLE }}
+
+          NEXT_PUBLIC_URL: ${{ vars.NEXT_PUBLIC_URL }}
+          FEATURE_FLAGS_ENABLED: ${{ vars.FEATURE_FLAGS_ENABLED }}
+          PORTAL_BASE_URL: ${{ vars.PORTAL_BASE_URL }}
+
+          PROD_DB_HOST: ${{ secrets.PROD_DB_HOST }}
+          PROD_DB_PORT: ${{ secrets.PROD_DB_PORT }}
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_LOG_LEVEL: ${{ secrets.PROD_LOG_LEVEL }}
+          PROD_RELOAD: ${{ secrets.PROD_RELOAD }}
+
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SECRET_CODE: ${{ secrets.SECRET_CODE }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_DB: ${{ secrets.REDIS_DB }}
+          REDIS_ENABLED: ${{ secrets.REDIS_ENABLED }}
         run: |
           rm -f .env
           touch .env
 
+          write_env() {
+            local key="$1"
+            local value="$2"
+
+            if [ -n "$value" ]; then
+              printf '%s=%s\n' "$key" "$value" >> .env
+            fi
+          }
+
           echo "--- Gerando configurações de ambiente ---"
-          if [ -n "${{ vars.LINK_ACESSO }}" ]; then
-            echo "LINK_ACESSO=${{ vars.LINK_ACESSO }}" >> .env
-          fi
 
-          if [ "${{ inputs.project_type }}" == "backend" ]; then
-            echo "API_ROOT_PATH=${{ vars.API_ROOT_PATH }}" >> .env
-            echo "API_V1_STR=${{ vars.API_V1_STR }}" >> .env
-            echo "AUTH_SERVICE_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
-            echo "TIPO_AMBIENTE=${{ vars.TIPO_AMBIENTE }}" >> .env
-            echo "TITLE=${{ vars.TITLE }}" >> .env
-            
-            echo "LOG_LEVEL=info" >> .env 
+          write_env "LINK_ACESSO" "$LINK_ACESSO"
 
-            echo "PROD_DB_HOST=${{ secrets.PROD_DB_HOST }}" >> .env
-            echo "PROD_DB_PORT=${{ secrets.PROD_DB_PORT }}" >> .env
-            echo "PROD_DB_NAME=${{ secrets.PROD_DB_NAME }}" >> .env
-            echo "PROD_DB_USER=${{ secrets.PROD_DB_USER }}" >> .env
-            echo "PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}" >> .env
-            echo "PROD_LOG_LEVEL=${{ secrets.PROD_LOG_LEVEL }}" >> .env
-            echo "PROD_RELOAD=${{ secrets.PROD_RELOAD }}" >> .env
-            
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            
-            echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" >> .env
-            echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" >> .env
-            echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
-            echo "SECRET_CODE=${{ secrets.SECRET_CODE }}" >> .env
-            echo "REDIS_HOST=${{secrets.REDIS_HOST}}" >> .env
-            echo "REDIS_PORT=${{secrets.REDIS_PORT}}" >> .env
-            echo "REDIS_DB=${{secrets.REDIS_DB}}" >> .env
-            echo "REDIS_ENABLED=${{secrets.REDIS_ENABLED}}" >> .env
+          if [ "$PROJECT_TYPE" = "backend" ]; then
+            write_env "API_ROOT_PATH" "$API_ROOT_PATH"
+            write_env "API_V1_STR" "$API_V1_STR"
+            write_env "AUTH_SERVICE_URL" "$AUTH_SERVICE_URL"
+            write_env "TIPO_AMBIENTE" "$TIPO_AMBIENTE"
+            write_env "TITLE" "$TITLE"
+            write_env "LOG_LEVEL" "info"
+
+            write_env "PROD_DB_HOST" "$PROD_DB_HOST"
+            write_env "PROD_DB_PORT" "$PROD_DB_PORT"
+            write_env "PROD_DB_NAME" "$PROD_DB_NAME"
+            write_env "PROD_DB_USER" "$PROD_DB_USER"
+            write_env "PROD_DB_PASSWORD" "$PROD_DB_PASSWORD"
+            write_env "PROD_LOG_LEVEL" "$PROD_LOG_LEVEL"
+            write_env "PROD_RELOAD" "$PROD_RELOAD"
+
+            write_env "JWT_SECRET" "$JWT_SECRET"
+            write_env "MAIL_USERNAME" "$MAIL_USERNAME"
+            write_env "MAIL_PASSWORD" "$MAIL_PASSWORD"
+            write_env "MAIL_FROM" "$MAIL_FROM"
+            write_env "SECRET_CODE" "$SECRET_CODE"
+            write_env "REDIS_HOST" "$REDIS_HOST"
+            write_env "REDIS_PORT" "$REDIS_PORT"
+            write_env "REDIS_DB" "$REDIS_DB"
+            write_env "REDIS_ENABLED" "$REDIS_ENABLED"
           else
-            echo "NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}" >> .env
-            echo "NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}" >> .env
-            echo "NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}" >> .env
-            echo "NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}" >> .env
-            echo "NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}" >> .env
-            echo "NEXT_PUBLIC_TITLE=${{ vars.TITLE }}" >> .env
+            write_env "NEXT_PUBLIC_API_URL" "$AUTH_SERVICE_URL"
+            write_env "NEXT_PUBLIC_URL" "$NEXT_PUBLIC_URL"
+            write_env "NEXT_PUBLIC_BASE_PATH" "$API_ROOT_PATH"
+            write_env "NEXT_PUBLIC_FEATURE_FLAGS_ENABLED" "$FEATURE_FLAGS_ENABLED"
+            write_env "NEXT_PUBLIC_PORTAL_BASE_URL" "$PORTAL_BASE_URL"
+            write_env "NEXT_PUBLIC_TITLE" "$TITLE"
           fi
 
           sed 's/=.*/=[redacted]/' .env
