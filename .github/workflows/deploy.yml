@@ -58,6 +58,8 @@ on:
         required: false
       SECRET_CODE:
         required: false
+      PRODUCAO_ADMIN_PASSWORD:
+        required: false
       REDIS_HOST:
         required: false
       REDIS_PORT:
@@ -136,7 +138,6 @@ jobs:
           REDIS_PORT: ${{ secrets.REDIS_PORT }}
           REDIS_DB: ${{ secrets.REDIS_DB }}
           REDIS_ENABLED: ${{ secrets.REDIS_ENABLED }}
-
           PRODUCAO_ADMIN_PASSWORD: ${{ secrets.PRODUCAO_ADMIN_PASSWORD }}
         run: |
           rm -f .env
@@ -176,6 +177,7 @@ jobs:
             write_env "MAIL_PASSWORD" "$MAIL_PASSWORD"
             write_env "MAIL_FROM" "$MAIL_FROM"
             write_env "SECRET_CODE" "$SECRET_CODE"
+            write_env "PRODUCAO_ADMIN_PASSWORD" "$PRODUCAO_ADMIN_PASSWORD"
             write_env "REDIS_HOST" "$REDIS_HOST"
             write_env "REDIS_PORT" "$REDIS_PORT"
             write_env "REDIS_DB" "$REDIS_DB"
