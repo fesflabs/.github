@@ -137,7 +137,6 @@ jobs:
           REDIS_DB: ${{ secrets.REDIS_DB }}
           REDIS_ENABLED: ${{ secrets.REDIS_ENABLED }}
 
-          SECRET_CODE: ${{ secrets.SECRET_CODE }}
           PRODUCAO_ADMIN_PASSWORD: ${{ secrets.PRODUCAO_ADMIN_PASSWORD }}
         run: |
           rm -f .env
