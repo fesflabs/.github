@@ -1,0 +1,170 @@
+name: CI Centralizado (GHCR)
+
+on:
+  workflow_call:
+    inputs:
+      project_type:
+        description: "Tipo: 'backend' ou 'frontend'"
+        required: true
+        type: string
+      service_name:
+        description: "Nome do serviço no docker-compose"
+        required: true
+        type: string
+      working_directory:
+        description: "Diretório do docker-compose"
+        required: false
+        default: "."
+        type: string
+      build_context:
+        description: "Contexto do Docker Build"
+        required: false
+        default: "."
+        type: string
+      runner_labels:
+        description: "Labels do runner de build"
+        required: false
+        type: string
+        default: '["self-hosted", "ci", "ephemeral"]'
+      environment_name:
+        description: "Ambiente (develop, homolog, prod)"
+        required: true
+        type: string
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  quality-checks:
+    name: Lint and Type checks
+    if: ${{ inputs.project_type == 'frontend' }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node with PNPM Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Configure PNPM Strict Builds
+        run: pnpm config set strict-dep-builds false
+
+      - name: Instalar Dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Executar Lint
+        run: pnpm lint
+
+      - name: Executar Type Check
+        run: pnpm type-check
+
+  build-frontend:
+    name: Build and Push Frontend
+    needs: quality-checks
+    if: ${{ inputs.project_type == 'frontend' }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.build_context }}
+          push: true
+          provenance: false
+          build-args: |
+            PNPM_STRICT_DEP_BUILDS=false
+            NEXT_PUBLIC_API_URL=${{ vars.AUTH_SERVICE_URL }}
+            NEXT_PUBLIC_URL=${{ vars.NEXT_PUBLIC_URL }}
+            NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}
+            NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}
+            NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}
+            NEXT_PUBLIC_TITLE=${{ vars.TITLE }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=inline
+
+      - name: Limpeza
+        if: always()
+        run: docker image prune -f --filter "dangling=true"
+
+  build-and-push-backend:
+    name: Build and Push Backend
+    if: ${{ inputs.project_type == 'backend' }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Criar .env para Build
+        working-directory: ${{ inputs.working_directory }}
+        run: echo "DUMMY_VAR=DUMMY_VALUE" > .env
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.build_context }}
+          push: true
+          provenance: false
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ inputs.environment_name }}
+          cache-to: type=inline
+
+      - name: Limpeza
+        if: always()
+        run: docker image prune -f --filter "dangling=true"

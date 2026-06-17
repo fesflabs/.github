@@ -1,0 +1,204 @@
+
+name: CD Centralizado (Deploy GHCR)
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: "Nome do serviço no docker-compose"
+        required: true
+        type: string
+      project_type:
+        description: "Tipo: 'backend' ou 'frontend'"
+        required: true
+        type: string
+      working_directory:
+        description: "Diretório do docker-compose"
+        required: false
+        default: "."
+        type: string
+      migration_command:
+        description: "Comando opcional de migração a ser executado no container do serviço"
+        required: false
+        default: ""
+        type: string
+      runner_labels:
+        description: "Labels do runner de deploy"
+        required: true
+        type: string
+      environment_name:
+        description: "Ambiente para carregar as variáveis"
+        required: true
+        type: string
+    secrets:
+      PROD_DB_HOST:
+        required: false
+      PROD_DB_PORT:
+        required: false
+      PROD_DB_NAME:
+        required: false
+      PROD_DB_USER:
+        required: false
+      PROD_DB_PASSWORD:
+        required: false
+      PROD_LOG_LEVEL:
+        required: false
+      PROD_RELOAD:
+        required: false
+      JWT_SECRET:
+        required: false
+      MAIL_USERNAME:
+        required: false
+      MAIL_PASSWORD:
+        required: false
+      MAIL_FROM:
+        required: false
+      SECRET_CODE:
+        required: false
+      PRODUCAO_ADMIN_PASSWORD:
+        required: false
+      REDIS_HOST:
+        required: false
+      REDIS_PORT:
+        required: false
+      REDIS_DB:
+        required: false
+      REDIS_ENABLED:
+        required: false
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gerar .env Dinâmico
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          PROJECT_TYPE: ${{ inputs.project_type }}
+          LINK_ACESSO: ${{ vars.LINK_ACESSO }}
+          API_ROOT_PATH: ${{ vars.API_ROOT_PATH }}
+          API_V1_STR: ${{ vars.API_V1_STR }}
+          AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
+          TIPO_AMBIENTE: ${{ vars.TIPO_AMBIENTE }}
+          TITLE: ${{ vars.TITLE }}
+          NEXT_PUBLIC_URL: ${{ vars.NEXT_PUBLIC_URL }}
+          FEATURE_FLAGS_ENABLED: ${{ vars.FEATURE_FLAGS_ENABLED }}
+          PORTAL_BASE_URL: ${{ vars.PORTAL_BASE_URL }}
+          PROD_DB_HOST: ${{ secrets.PROD_DB_HOST }}
+          PROD_DB_PORT: ${{ secrets.PROD_DB_PORT }}
+          PROD_DB_NAME: ${{ secrets.PROD_DB_NAME }}
+          PROD_DB_USER: ${{ secrets.PROD_DB_USER }}
+          PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          PROD_LOG_LEVEL: ${{ secrets.PROD_LOG_LEVEL }}
+          PROD_RELOAD: ${{ secrets.PROD_RELOAD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SECRET_CODE: ${{ secrets.SECRET_CODE }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_DB: ${{ secrets.REDIS_DB }}
+          REDIS_ENABLED: ${{ secrets.REDIS_ENABLED }}
+          PRODUCAO_ADMIN_PASSWORD: ${{ secrets.PRODUCAO_ADMIN_PASSWORD }}
+        run: |
+          rm -f .env
+          touch .env
+
+          write_env() {
+            local key="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              printf '%s=%s\n' "$key" "$value" >> .env
+            fi
+          }
+
+          echo "--- Gerando configurações de ambiente ---"
+
+          write_env "LINK_ACESSO" "$LINK_ACESSO"
+
+          if [ "$PROJECT_TYPE" = "backend" ]; then
+            write_env "API_ROOT_PATH" "$API_ROOT_PATH"
+            write_env "API_V1_STR" "$API_V1_STR"
+            write_env "AUTH_SERVICE_URL" "$AUTH_SERVICE_URL"
+            write_env "TIPO_AMBIENTE" "$TIPO_AMBIENTE"
+            write_env "TITLE" "$TITLE"
+            write_env "LOG_LEVEL" "info"
+            write_env "PROD_DB_HOST" "$PROD_DB_HOST"
+            write_env "PROD_DB_PORT" "$PROD_DB_PORT"
+            write_env "PROD_DB_NAME" "$PROD_DB_NAME"
+            write_env "PROD_DB_USER" "$PROD_DB_USER"
+            write_env "PROD_DB_PASSWORD" "$PROD_DB_PASSWORD"
+            write_env "PROD_LOG_LEVEL" "$PROD_LOG_LEVEL"
+            write_env "PROD_RELOAD" "$PROD_RELOAD"
+            write_env "JWT_SECRET" "$JWT_SECRET"
+            write_env "MAIL_USERNAME" "$MAIL_USERNAME"
+            write_env "MAIL_PASSWORD" "$MAIL_PASSWORD"
+            write_env "MAIL_FROM" "$MAIL_FROM"
+            write_env "SECRET_CODE" "$SECRET_CODE"
+            write_env "PRODUCAO_ADMIN_PASSWORD" "$PRODUCAO_ADMIN_PASSWORD"
+            write_env "REDIS_HOST" "$REDIS_HOST"
+            write_env "REDIS_PORT" "$REDIS_PORT"
+            write_env "REDIS_DB" "$REDIS_DB"
+            write_env "REDIS_ENABLED" "$REDIS_ENABLED"
+          else
+            write_env "NEXT_PUBLIC_API_URL" "$AUTH_SERVICE_URL"
+            write_env "NEXT_PUBLIC_URL" "$NEXT_PUBLIC_URL"
+            write_env "NEXT_PUBLIC_BASE_PATH" "$API_ROOT_PATH"
+            write_env "NEXT_PUBLIC_FEATURE_FLAGS_ENABLED" "$FEATURE_FLAGS_ENABLED"
+            write_env "NEXT_PUBLIC_PORTAL_BASE_URL" "$PORTAL_BASE_URL"
+            write_env "NEXT_PUBLIC_TITLE" "$TITLE"
+          fi
+
+          sed 's/=.*/=[redacted]/' .env
+
+      - name: Atualizar Serviço
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
+          IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/${{ vars.REPO_IMAGE_NAME }}:${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          echo "🚀 Baixando imagem: $IMAGE_TAG"
+          docker compose pull ${{ inputs.service_name }}
+
+          echo "🚀 Recriando container..."
+          docker compose up -d
+
+      - name: Executar Migrações
+        if: ${{ inputs.project_type == 'backend' && inputs.migration_command != '' }}
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          NETWORK_NAME: ${{ vars.NETWORK_NAME }}
+          MIGRATION_COMMAND: ${{ inputs.migration_command }}
+        run: |
+          echo "🚀 Executando migrações: $MIGRATION_COMMAND"
+          for attempt in 1 2 3 4 5; do
+            if docker compose exec -T ${{ inputs.service_name }} sh -lc "$MIGRATION_COMMAND"; then
+              echo "✅ Migrações executadas com sucesso."
+              exit 0
+            fi
+            echo "⏳ Tentativa $attempt falhou. Aguardando container estabilizar..."
+            sleep 5
+          done
+          echo "❌ Não foi possível executar as migrações."
+          exit 1
+
+      - name: Limpeza
+        if: always()
+        run: docker image prune -f
