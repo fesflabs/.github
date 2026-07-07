@@ -115,6 +115,7 @@ jobs:
             NEXT_PUBLIC_BASE_PATH=${{ vars.API_ROOT_PATH }}
             NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=${{ vars.FEATURE_FLAGS_ENABLED }}
             NEXT_PUBLIC_PORTAL_BASE_URL=${{ vars.PORTAL_BASE_URL }}
+            NEXT_PUBLIC_IS_PROD=${{ vars.NEXT_PUBLIC_IS_PROD }}
             NEXT_PUBLIC_TITLE=${{ vars.TITLE }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
           tags: |
