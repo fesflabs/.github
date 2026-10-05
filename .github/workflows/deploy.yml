@@ -29,11 +29,22 @@ on:
         description: "Ambiente para carregar as variáveis (develop, homolog, prod)"
         required: true
         type: string
+      env_keys:
+        description: >-
+          Variáveis extras gravadas no .env, separadas por espaço ou quebra de linha.
+          Cada nome é buscado nos secrets e, se vazio, nas vars (repositório,
+          organização ou environment). Ex.: "DATABASE_URL SECRET_KEY ALLOWED_HOSTS"
+        required: false
+        default: ""
+        type: string
     secrets:
+      # Opcionais para permitir `secrets: inherit` no caller: quando estes secrets
+      # ficam no environment, o caller não os enxerga e a validação de "required"
+      # falharia. O valor real é resolvido no job, que declara `environment:`.
       REGISTRY_USERNAME:
-        required: true
+        required: false
       REGISTRY_PASSWORD:
-        required: true
+        required: false
       PROD_DB_HOST:
         required: false
       PROD_DB_PORT:
@@ -190,6 +201,40 @@ jobs:
             write_env "NEXT_PUBLIC_PORTAL_BASE_URL" "$PORTAL_BASE_URL"
             write_env "NEXT_PUBLIC_TITLE" "$TITLE"
           fi
+
+          sed 's/=.*/=[redacted]/' .env
+
+      - name: Gravar variáveis extras no .env
+        if: ${{ inputs.env_keys != '' }}
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ENV_KEYS: ${{ inputs.env_keys }}
+          SECRETS_JSON: ${{ toJSON(secrets) }}
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: |
+          if ! command -v jq >/dev/null; then
+            echo "::error::jq não encontrado no runner (necessário para env_keys)"
+            exit 1
+          fi
+
+          echo "--- Gravando variáveis extras (env_keys) ---"
+          for key in $ENV_KEYS; do
+            value=$(jq -r --arg k "$key" '.[$k] // empty' <<<"$SECRETS_JSON")
+            [ -n "$value" ] || value=$(jq -r --arg k "$key" '.[$k] // empty' <<<"$VARS_JSON")
+            if [ -z "$value" ]; then
+              echo "::warning::$key sem valor (nem secret nem var)"
+              continue
+            fi
+            # Aspas simples: o compose não interpola $ nem trata # como comentário.
+            case "$value" in
+              *"'"*|*$'\n'*)
+                echo "::error::$key contém aspa simples ou quebra de linha, não suportado no .env"
+                exit 1 ;;
+            esac
+            # Remove definição anterior da mesma chave (gerada no passo acima)
+            sed -i "/^${key}=/d" .env
+            printf "%s='%s'\n" "$key" "$value" >> .env
+          done
 
           sed 's/=.*/=[redacted]/' .env
 
